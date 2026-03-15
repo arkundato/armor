@@ -1,0 +1,204 @@
+
+#arkundato2026
+# ------------------------- INITIALIZATION -------------------------
+units           metal
+dimension       3
+boundary        p p p
+atom_style      atomic
+
+read_data Ti6Al4V_TiB2_config1.data
+
+# -------------------- PARAMETER morse --------------------
+pair_style morse 8.0
+#================================================================================
+  #PARAMETER POTENSIAL MORSE — SISTEM Ti6Al4V + TiB2 NANOKOMPOSIT
+  #Tiga kelompok: (1) TiB2 filler saja, (2) Matrix TiAlV saja, (3) Lengkap
+#================================================================================
+ # Format LAMMPS: pair_coeff I J  D0(eV)  alpha(1/Å)  r0(Å)  cutoff(Å)
+  #Fungsi       : E = D0 * [exp(-2α(r-r0)) - 2*exp(-α(r-r0))]
+
+  #SUMBER PARAMETER HOMOATOMIK:
+   # Ti, Ti2 : Jacobson & Thompson, Comput. Mater. Sci. 205, 111206 (2022)
+   #           DOI: 10.1016/j.commatsci.2022.111206
+  #  Al      : Girifalco & Weizer, Phys. Rev. 114(3), 687–690 (1959)
+  #            DOI: 10.1103/PhysRev.114.687
+  #  V       : Jacobson & Thompson, Comput. Mater. Sci. 205, 111206 (2022)
+   # B-B     : r0=1.850 Å ← jarak B-B rantai zig-zag dalam TiB B27
+   #           Referensi: Liang et al., J. Phys.: Condens. Matter 20 (2008)
+   #                      Panda & Chandran, Comput. Mater. Sci. 35, 134 (2006)
+   # Ti-B    : r0=2.370 Å, D0=0.5500 eV ← data DFT TiB B27
+    #          Referensi: Ko et al., MSMSE 23(5), 054013 (2015)
+    #          DOI: 10.1088/0965-0393/23/5/054013
+
+ # MIXING RULE (cross-pairs):
+  #  D0_ij    = sqrt(D0_i × D0_j)
+  #  alpha_ij = (alpha_i + alpha_j) / 2
+  #  r0_ij    = (r0_i + r0_j) / 2
+
+#============================================================
+
+# Sistem lengkap TiAlV + TiB2 ───────────
+# Atom type mapping (full mode):
+#   1 = Ti  (matrix Ti6Al4V)
+#   2 = Al  (matrix Ti6Al4V)
+#   3 = V   (matrix Ti6Al4V)
+#   4 = Ti2 (filler TiB — dipisahkan untuk kontrol pair_coeff Ti-B)
+#   5 = B   (filler TiB)
+
+# ============================================================
+# HOMOATOMIK — 5 tipe atom
+# ============================================================
+
+# 1-1: Ti-Ti (matrix)    [Jacobson & Thompson, 2022]
+pair_coeff 1 1   0.4769   1.3885   2.9210   8.0
+
+# 2-2: Al-Al (matrix)    [Girifalco & Weizer, 1959]
+pair_coeff 2 2   0.2703   1.1646   3.2530   8.0
+
+# 3-3: V-V  (matrix)     [Jacobson & Thompson, 2022]
+pair_coeff 3 3   0.5765   1.4177   2.7260   8.0
+
+# 4-4: Ti2-Ti2 (filler)  [identik Ti — Jacobson & Thompson, 2022]
+pair_coeff 4 4   0.4769   1.3885   2.9210   8.0
+
+# 5-5: B-B (filler)      [Liang 2008; Panda & Chandran 2006 — DIREVISI]
+#      r0=1.850 Å (nearest-neighbor B-B dalam rantai zig-zag TiB B27)
+#      alpha=1.7200 Å⁻¹ (ikatan B-B kovalen, lebih keras)
+pair_coeff 5 5   0.3500   1.7200   1.8500   8.0
+
+# ============================================================
+# DALAM MATRIX — pasangan Ti6Al4V
+# ============================================================
+
+# 1-2: Ti-Al   [mixing rule]
+#      D0=sqrt(0.4769*0.2703)=0.3590  alpha=1.2766  r0=3.0870
+pair_coeff 1 2   0.3590   1.2766   3.0870   8.0
+
+# 1-3: Ti-V    [mixing rule]
+#      D0=sqrt(0.4769*0.5765)=0.5243  alpha=1.4031  r0=2.8235
+pair_coeff 1 3   0.5243   1.4031   2.8235   8.0
+
+# 2-3: Al-V    [mixing rule]
+#      D0=sqrt(0.2703*0.5765)=0.3948  alpha=1.2912  r0=2.9895
+pair_coeff 2 3   0.3948   1.2912   2.9895   8.0
+
+# ============================================================
+# DALAM FILLER — pasangan Ti-B dalam TiB
+# ============================================================
+
+# 4-5: Ti2-B   [Ko et al., MSMSE 2015 — DIREVISI, D0 dan r0 dari DFT TiB B27]
+#      D0=0.5500 eV (lebih kuat dari mixing rule, sesuai sifat ionik-kovalen)
+#      alpha=(1.3885+1.7200)/2=1.5543  r0=2.3700 Å (jarak Ti-B nearest-neighbor DFT)
+pair_coeff 4 5   0.5500   1.5543   2.3700   8.0
+
+# ============================================================
+# INTERFACE — pasangan lintas matrix ↔ filler
+# ============================================================
+
+# 1-4: Ti(matrix)–Ti2(filler)  [identik Ti-Ti, atom fisik yang sama]
+pair_coeff 1 4   0.4769   1.3885   2.9210   8.0
+
+# 1-5: Ti(matrix)–B(filler)    [mixing rule, B dikoreksi]
+#      D0=sqrt(0.4769*0.3500)=0.4086  alpha=(1.3885+1.7200)/2=1.5543
+#      r0=(2.9210+1.8500)/2=2.3855
+pair_coeff 1 5   0.4086   1.5543   2.3855   8.0
+
+# 2-4: Al–Ti2(filler)          [mixing rule Al+Ti]
+#      D0=sqrt(0.2703*0.4769)=0.3590  alpha=1.2766  r0=3.0870
+pair_coeff 2 4   0.3590   1.2766   3.0870   8.0
+
+# 2-5: Al–B                    [mixing rule, B dikoreksi]
+#      D0=sqrt(0.2703*0.3500)=0.3076  alpha=(1.1646+1.7200)/2=1.4423
+#      r0=(3.2530+1.8500)/2=2.5515
+pair_coeff 2 5   0.3076   1.4423   2.5515   8.0
+
+# 3-4: V–Ti2(filler)           [mixing rule V+Ti]
+#      D0=sqrt(0.5765*0.4769)=0.5243  alpha=1.4031  r0=2.8235
+pair_coeff 3 4   0.5243   1.4031   2.8235   8.0
+
+# 3-5: V–B                     [mixing rule, B dikoreksi]
+#      D0=sqrt(0.5765*0.3500)=0.4492  alpha=(1.4177+1.7200)/2=1.5689
+#      r0=(2.7260+1.8500)/2=2.2880
+pair_coeff 3 5   0.4492   1.5689   2.2880   8.0
+
+
+
+thermo 1
+thermo_style custom step pe etotal fnorm temp density
+min_style cg
+minimize 1e-6 1e-8 1000 10000
+
+write_data 1-min.lmp
+
+# Neighbor settings
+neighbor        2.0 bin
+neigh_modify    delay 0 every 1 check yes
+
+# -------------------- COMPUTE --------------------
+compute peratom all pe/atom
+
+# -------------------- EQUILIBRATION (NPT) --------------------
+reset_timestep 0
+timestep 0.001
+velocity all create 300 12345 mom yes rot no
+thermo 1000
+thermo_style custom step lx ly lz press pxx pyy pzz pe temp etotal density
+fix 1 all npt temp 300 300 0.05 iso 0 0 1
+run 70000
+unfix 1
+
+write_data npt.lmp
+write_restart npt.restart
+
+
+
+timestep 0.0005
+# -------------------- SIMULATION UNIAXIAL TENSION --------------------
+# Simpan panjang awal untuk semua arah
+variable tmp equal "lx"
+variable L0 equal ${tmp}
+print "Initial Length L0 (x-direction): ${L0}"
+
+variable tmpy equal "ly"
+variable Ly0 equal ${tmpy}
+print "Initial Length Ly0 (y-direction): ${Ly0}"
+
+variable tmpz equal "lz"
+variable Lz0 equal ${tmpz}
+print "Initial Length Lz0 (z-direction): ${Lz0}"
+
+reset_timestep 0
+# NPT untuk menjaga tekanan nol di arah lateral (y dan z)
+fix 1 all npt temp 300 300 0.05 y 0 0 1 z 0 0 1
+
+# Deformasi uniaksial di arah x dengan strain rate
+variable srate equal 1.0e10
+variable srate1 equal "v_srate / 1.0e12"
+fix 2 all deform 1 x erate ${srate1} units box remap x
+
+# Hitung strain untuk semua arah
+variable strain_x equal "(lx - v_L0)/v_L0"
+variable strain_y equal "(ly - v_Ly0)/v_Ly0"
+variable strain_z equal "(lz - v_Lz0)/v_Lz0"
+
+# Hitung stress (dalam GPa, konversi dari bar)
+variable stress_xx equal "-pxx/10000"
+variable stress_yy equal "-pyy/10000"
+variable stress_zz equal "-pzz/10000"
+
+# Hitung Von Mises stress (GPa)
+variable stress_vm equal "sqrt(0.5*((v_stress_xx-v_stress_yy)^2 + (v_stress_yy-v_stress_zz)^2 + (v_stress_zz-v_stress_xx)^2))"
+
+# Output data untuk analisis Poisson's ratio
+# Format: Strain_x Strain_y Strain_z Stress_xx Stress_yy Stress_zz Stress_VM
+fix def1 all print 100 "${strain_x} ${strain_y} ${strain_z} ${stress_xx} ${stress_yy} ${stress_zz} ${stress_vm}" &
+    file stress_strain_data.txt screen no title "Strain_x Strain_y Strain_z Stress_xx(GPa) Stress_yy(GPa) Stress_zz(GPa) Stress_VM(GPa)"
+
+dump 1 all custom 1000 dump.lammpstrj id type x y z
+
+thermo 1000
+thermo_style custom step v_strain_x v_strain_y v_strain_z temp v_stress_xx v_stress_yy v_stress_zz ke pe press etotal
+run 20000
+
+print "Uniaxial tension simulation completed"
+
